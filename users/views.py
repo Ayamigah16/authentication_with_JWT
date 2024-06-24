@@ -2,14 +2,17 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework.views import APIView
-from .serialIzers import UserSerializer
+from .serializers import UserSerializer
 from rest_framework.response import Response
 from .models import User
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import AllowAny
 
 import jwt, datetime
 
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = UserSerializer(data=request.data)
 
@@ -23,6 +26,8 @@ class RegisterView(APIView):
         
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         email = request.data.get("email")
         password = request.data.get("password")
@@ -41,7 +46,7 @@ class LoginView(APIView):
             "iat": datetime.datetime.utcnow()
         }
 
-        token = jwt.encode(payload, "secret",algorithm="HS256").decode("utf-8")
+        token = jwt.encode(payload, "secret",algorithm="HS256")
 
         response = Response()
         response.set_cookie(key="jwt", value=token, httponly=True)
@@ -56,6 +61,8 @@ class LoginView(APIView):
     
 
 class UserView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
         token = request.COOKIES.get("jwt")
 
@@ -63,11 +70,11 @@ class UserView(APIView):
             raise AuthenticationFailed("Unauthenticated")
         
         try:
-            payload = jwt.decode(token, 'secret', algorithm=["HS256"])
+            payload = jwt.decode(token, 'secret', algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("Unathenticated")
         
-        user = User.objects.get(payload["id"])
+        user = User.objects.filter(id=payload["id"]).first()
 
         serializer = UserSerializer(user)
 
@@ -75,6 +82,8 @@ class UserView(APIView):
     
 
 class LogoutView(APIView):
+        permission_classes = [AllowAny]
+        
         def post(self, request):
             response = Response()
             response.delete_cookie("jwt")
